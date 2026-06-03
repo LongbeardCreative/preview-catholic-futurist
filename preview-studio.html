@@ -56,6 +56,11 @@
   .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
   .btn-ghost:hover{color:var(--ink);border-color:#3a3a40}
   .btn-ghost:disabled{opacity:.4;cursor:not-allowed}
+  .fname{display:flex;flex-direction:column;gap:7px;margin-bottom:2px}
+  .fname label{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);font-weight:700}
+  .fname-row{display:flex;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:0 13px}
+  .fname-row input{flex:1;background:transparent;border:0;outline:0;color:var(--ink);font-family:'Roboto',sans-serif;font-size:13px;padding:11px 0}
+  .fname-row span{color:var(--muted-2);font-size:13px}
   .note{font-size:10.5px;color:var(--muted-2);line-height:1.55;text-align:center;padding:0 4px}
   .note b{color:var(--muted)}
   .divider{height:1px;background:var(--line);margin:2px 0}
@@ -189,17 +194,21 @@
     </div>
 
     <div class="actions">
-      <button class="btn btn-primary" id="copylink" disabled>
-        <svg viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1.5 1.5" stroke="#1a1a14" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1.5-1.5" stroke="#1a1a14" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Copy share link
+      <div class="fname">
+        <label>Share page filename</label>
+        <div class="fname-row"><input type="text" id="fname" value="futurist-preview" spellcheck="false"><span>.html</span></div>
+      </div>
+      <button class="btn btn-primary" id="export" disabled>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="#1a1a14" stroke-width="1.9" stroke-linecap="round"/><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="#1a1a14" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Create share page
       </button>
-      <button class="btn btn-ghost" id="export" disabled>
-        <svg viewBox="0 0 24 24" fill="none"><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="#9a9a9f" stroke-width="1.9" stroke-linecap="round"/><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="#9a9a9f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Download host-ready file
+      <button class="btn btn-ghost" id="copylink" disabled>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1.5 1.5" stroke="#9a9a9f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1.5-1.5" stroke="#9a9a9f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Copy quick link (small images)
       </button>
       <button class="btn btn-ghost" id="reset">Clear all</button>
       <div class="divider"></div>
-      <p class="note"><b>Copy share link</b> packs your images into the URL — paste it to anyone, no hosting needed. Very large images may exceed the link limit; if so, use the host-ready file (drop it on Netlify/Vercel for a permanent link).</p>
+      <p class="note"><b>Create share page</b> bakes your images into a preview-only HTML file. Upload that file to your GitHub repo and its URL is your share link — preview only, images included, no size limit. <b>Quick link</b> only works for very small images and is optional.</p>
     </div>
   </aside>
 
@@ -266,6 +275,7 @@
 
 <div class="toast" id="toast">Saved</div>
 
+<!--BAKE-SLOT-->
 <script>
   const state={yt:null,sp:null,li:null};
   // target sizes + jpeg quality for compact share links
@@ -353,15 +363,18 @@
     }
   });
 
-  // DOWNLOAD HOST-READY FILE — preview-only, images baked in
+  // CREATE SHARE PAGE — preview-only, images baked in
   document.getElementById('export').addEventListener('click',()=>{
     const baked={yt:state.yt,sp:state.sp,li:state.li};
     const docHtml='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
     const inject='<script>window.__BAKED__='+JSON.stringify(baked)+';window.__PREVIEW_ONLY__=true;<\/script>';
-    const out=docHtml.replace(/<script>window\.__BAKED__=[\s\S]*?<\/script>/,'').replace('<script>',inject+'\n<script>');
+    // replace the unique marker so we never touch the page's own <script> tags
+    const out=docHtml.replace(/<!--BAKE-SLOT-->(\s*<script>window\.__BAKED__=[\s\S]*?<\/script>)?/, '<!--BAKE-SLOT-->\n'+inject);
     const blob=new Blob([out],{type:'text/html'});const u=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=u;a.download='preview-share.html';a.click();URL.revokeObjectURL(u);
-    toast('Host-ready file downloaded ✓');
+    let name=(document.getElementById('fname').value||'preview-share').trim().replace(/[^a-z0-9_-]/gi,'-').replace(/-+/g,'-');
+    if(!name)name='preview-share';
+    const a=document.createElement('a');a.href=u;a.download=name+'.html';a.click();URL.revokeObjectURL(u);
+    toast('Share page created \u2713 \u2014 upload '+name+'.html to GitHub');
   });
 
   // ---- hydrate on load: from URL hash, or baked export ----
