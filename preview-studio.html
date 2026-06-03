@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e0e10;--panel:#161618;--panel-2:#1d1d20;--line:#2a2a2e;--line-soft:#222226;
+    --ink:#f4f3f0;--muted:#9a9a9f;--muted-2:#6e6e74;--accent:#e8d44d;--accent-ink:#1a1a14;
+    --radius:14px;--yt-bg:#0f0f0f;--sp-bg:#121212;--li-bg:#f4f2ee;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:'Roboto',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+  .app{display:grid;grid-template-columns:380px 1fr;height:100vh}
+  body.preview-only .app{grid-template-columns:1fr}
+  body.preview-only .editor{display:none}
+
+  .editor{background:var(--panel);border-right:1px solid var(--line);padding:34px 30px 40px;overflow-y:auto;display:flex;flex-direction:column;gap:26px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand .mark{width:34px;height:34px;border-radius:9px;background:var(--accent);display:grid;place-items:center;flex:none}
+  .brand .mark svg{width:18px;height:18px}
+  .brand h1{font-family:'Fraunces',serif;font-weight:600;font-size:20px;letter-spacing:-.01em;line-height:1}
+  .brand p{font-size:11.5px;color:var(--muted-2);margin-top:3px;letter-spacing:.02em}
+  .eyebrow{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-2);font-weight:700}
+  .uploads{display:flex;flex-direction:column;gap:16px}
+
+  .drop{border:1.5px dashed var(--line);border-radius:var(--radius);background:var(--panel-2);overflow:hidden;cursor:pointer;position:relative;transition:border-color .18s,background .18s}
+  .drop:hover{border-color:#3a3a40;background:#202024}
+  .drop.drag{border-color:var(--accent);background:#211f0f}
+  .drop.filled{border-style:solid;border-color:var(--line)}
+  .drop-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px 11px}
+  .drop-head .t{font-size:12.5px;font-weight:600;color:var(--ink)}
+  .drop-head .dim{font-size:10.5px;color:var(--muted-2);letter-spacing:.02em}
+  .drop-body{height:108px;display:grid;place-items:center;text-align:center;color:var(--muted-2);padding:0 16px;border-top:1px solid var(--line-soft);background:linear-gradient(135deg,rgba(255,255,255,.015),transparent);position:relative}
+  .drop-body .arrow{width:30px;height:30px;border-radius:50%;background:var(--panel);border:1px solid var(--line);display:grid;place-items:center;margin:0 auto 8px}
+  .drop-body .arrow svg{width:14px;height:14px}
+  .drop-body small{font-size:11px;display:block}
+  .drop-body small b{color:var(--muted);font-weight:600}
+  .drop.filled .drop-body{padding:0;height:120px;border-top:1px solid var(--line)}
+  .thumb{width:100%;height:100%;object-fit:cover;display:block}
+  .replace-hint{position:absolute;inset:0;background:rgba(8,8,9,.62);display:grid;place-items:center;opacity:0;transition:opacity .16s;font-size:11.5px;font-weight:600;color:#fff;letter-spacing:.02em}
+  .drop.filled:hover .replace-hint{opacity:1}
+  input[type=file]{display:none}
+
+  .actions{margin-top:auto;display:flex;flex-direction:column;gap:10px;padding-top:14px}
+  .btn{border:0;border-radius:11px;padding:14px;cursor:pointer;font-family:'Roboto',sans-serif;font-weight:700;font-size:13px;letter-spacing:.01em;display:flex;align-items:center;justify-content:center;gap:9px;transition:.16s}
+  .btn svg{width:16px;height:16px}
+  .btn-primary{background:var(--accent);color:var(--accent-ink)}
+  .btn-primary:hover{filter:brightness(1.06)}
+  .btn-primary:disabled{opacity:.4;cursor:not-allowed;filter:none}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+  .btn-ghost:hover{color:var(--ink);border-color:#3a3a40}
+  .btn-ghost:disabled{opacity:.4;cursor:not-allowed}
+  .note{font-size:10.5px;color:var(--muted-2);line-height:1.55;text-align:center;padding:0 4px}
+  .note b{color:var(--muted)}
+  .divider{height:1px;background:var(--line);margin:2px 0}
+
+  .stage{overflow-y:auto;position:relative;background:radial-gradient(1100px 700px at 70% -5%,#1a1a1f 0%,transparent 60%),var(--bg)}
+  .stage-inner{max-width:1080px;margin:0 auto;padding:46px 48px 100px}
+  body.preview-only .stage-inner{padding-top:54px}
+  .stage-head{margin-bottom:40px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .stage-head h2{font-family:'Fraunces',serif;font-weight:600;font-size:30px;letter-spacing:-.02em;line-height:1.05}
+  .stage-head p{color:var(--muted);font-size:13.5px;margin-top:7px;max-width:46ch;line-height:1.5}
+  .pill{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted-2);border:1px solid var(--line);border-radius:30px;padding:7px 14px;white-space:nowrap}
+
+  .block{margin-bottom:54px}
+  .block-label{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .block-label .n{font-family:'Fraunces',serif;font-size:13px;font-weight:600;width:24px;height:24px;border-radius:7px;background:var(--panel-2);border:1px solid var(--line);display:grid;place-items:center;color:var(--accent)}
+  .block-label .ttl{font-family:'Fraunces',serif;font-size:16px;font-weight:600}
+  .block-label .meta{font-size:11px;color:var(--muted-2);letter-spacing:.04em;margin-left:auto}
+  .block-label .meta b{color:var(--muted);font-weight:600}
+  .mock{border-radius:16px;overflow:hidden;box-shadow:0 30px 70px -30px rgba(0,0,0,.8),0 0 0 1px var(--line)}
+
+  /* YouTube */
+  .yt{background:var(--yt-bg);font-family:'Roboto',sans-serif;color:#f1f1f1}
+  .yt-bar{display:flex;align-items:center;gap:18px;padding:10px 18px;border-bottom:1px solid #272727}
+  .yt-logo{display:flex;align-items:center;gap:5px;font-weight:500}
+  .yt-logo .play{width:26px;height:18px;background:#ff0033;border-radius:5px;display:grid;place-items:center}
+  .yt-logo .play::after{content:"";border-left:7px solid #fff;border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;margin-left:1px}
+  .yt-logo span{font-size:17px;letter-spacing:-.5px}
+  .yt-search{flex:1;max-width:480px;height:32px;border:1px solid #303030;border-radius:18px;background:#121212;display:flex;align-items:center;padding:0 16px;color:#717171;font-size:13px}
+  .yt-body{display:grid;grid-template-columns:1.55fr 1fr;gap:22px;padding:22px 22px 26px}
+  .yt-player{aspect-ratio:16/9;background:#000;border-radius:11px;overflow:hidden;position:relative;border:1px solid #232323}
+  .yt-player img{width:100%;height:100%;object-fit:cover;display:block}
+  .yt-player .ph{position:absolute;inset:0;display:grid;place-items:center;color:#444;font-size:12px;letter-spacing:.04em}
+  .yt-player .bigplay{position:absolute;inset:0;margin:auto;width:62px;height:44px;background:rgba(0,0,0,.55);border-radius:11px;display:grid;place-items:center}
+  .yt-player .bigplay::after{content:"";border-left:18px solid #fff;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:4px}
+  .yt-title{font-size:16px;font-weight:500;margin:13px 2px 9px;line-height:1.3}
+  .yt-channel{display:flex;align-items:center;gap:10px;padding:2px}
+  .yt-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#3a3a3a,#1f1f1f);flex:none}
+  .yt-channel .c-name{font-size:13px;font-weight:500}
+  .yt-channel .c-sub{font-size:11.5px;color:#aaa}
+  .yt-side{display:flex;flex-direction:column;gap:9px}
+  .yt-rec{display:flex;gap:9px}
+  .yt-rec .rthumb{width:96px;height:54px;border-radius:7px;background:#1c1c1c;flex:none;border:1px solid #262626}
+  .yt-rec .rlines{flex:1;display:flex;flex-direction:column;gap:6px;padding-top:3px}
+  .yt-rec .rlines i{display:block;height:8px;border-radius:4px;background:#262626}
+  .yt-rec .rlines i:nth-child(1){width:92%}
+  .yt-rec .rlines i:nth-child(2){width:55%;background:#1f1f1f}
+  .yt-rec .rlines i:nth-child(3){width:40%;background:#1f1f1f;height:7px}
+
+  /* Spotify */
+  .sp{background:linear-gradient(180deg,#1f1f24,var(--sp-bg));font-family:'Roboto',sans-serif;color:#fff;padding:26px 26px 30px}
+  .sp-head{display:flex;align-items:center;gap:11px;margin-bottom:22px}
+  .sp-head .slog{width:26px;height:26px;border-radius:50%;background:#1db954;display:grid;place-items:center}
+  .sp-head .slog svg{width:16px;height:16px}
+  .sp-head .stitle{font-size:13px;color:#b3b3b3;font-weight:700;letter-spacing:.02em}
+  .sp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .sp-card{background:#181818;border-radius:9px;padding:14px}
+  .sp-card.hero{background:#232323}
+  .sp-cover{aspect-ratio:1/1;border-radius:6px;overflow:hidden;background:#2a2a2a;margin-bottom:13px;position:relative;box-shadow:0 8px 22px -8px rgba(0,0,0,.7)}
+  .sp-cover img{width:100%;height:100%;object-fit:cover;display:block}
+  .sp-cover .ph{position:absolute;inset:0;display:grid;place-items:center;color:#555;font-size:11px;text-align:center;padding:8px}
+  .sp-card .nm{font-size:14px;font-weight:700;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sp-card .by{font-size:12px;color:#a7a7a7;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .sp-fake .nm{height:13px;width:70%;background:#2e2e2e;border-radius:4px}
+  .sp-fake .by{height:11px;width:45%;background:#242424;border-radius:4px;margin-top:7px}
+
+  /* Social */
+  .li{background:var(--li-bg);font-family:'Roboto',sans-serif;color:#1a1a1a;padding:30px 0;display:grid;place-items:center}
+  .li-card{width:min(420px,90%);background:#fff;border:1px solid #e3e1dc;border-radius:11px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .li-top{display:flex;align-items:center;gap:11px;padding:15px 16px 11px}
+  .li-av{width:46px;height:46px;border-radius:8px;background:#111;display:grid;place-items:center;flex:none}
+  .li-av svg{width:22px;height:22px}
+  .li-who .nm{font-size:14px;font-weight:700}
+  .li-who .sub{font-size:12px;color:#65636d;margin-top:1px}
+  .li-who .time{font-size:11.5px;color:#8a8890;margin-top:1px}
+  .li-cap{padding:2px 16px 14px;font-size:14px;line-height:1.45;color:#27262b}
+  .li-media{width:100%;aspect-ratio:1080/1350;background:#e9e7e2;position:relative;overflow:hidden}
+  .li-media img{width:100%;height:100%;object-fit:cover;display:block}
+  .li-media .ph{position:absolute;inset:0;display:grid;place-items:center;color:#a8a6a0;font-size:13px;text-align:center;padding:14px;gap:6px}
+  .li-actions{display:flex;border-top:1px solid #eceae5}
+  .li-actions div{flex:1;text-align:center;padding:11px;font-size:13px;font-weight:600;color:#65636d;display:flex;align-items:center;justify-content:center;gap:7px}
+  .li-actions svg{width:17px;height:17px}
+
+  .stage::-webkit-scrollbar,.editor::-webkit-scrollbar{width:10px}
+  .stage::-webkit-scrollbar-thumb,.editor::-webkit-scrollbar-thumb{background:#2a2a2e;border-radius:10px;border:3px solid transparent;background-clip:padding-box}
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:13px;padding:13px 22px;border-radius:11px;opacity:0;transition:.28s;pointer-events:none;z-index:50;box-shadow:0 16px 40px -12px rgba(0,0,0,.6)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.warn{background:#e07a4d;color:#fff}
+
+  @media(max-width:820px){
+    .app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto;overflow:auto}
+    body{overflow:auto}
+    .editor{border-right:0;border-bottom:1px solid var(--line)}
+    .yt-body{grid-template-columns:1fr}.yt-side{display:none}
+    .sp-grid{grid-template-columns:1fr 1fr}
+    .stage-inner{padding:30px 22px 80px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="editor">
+    <div class="brand">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M4 16l5-5 4 4 7-7" stroke="#1a1a14" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="8" r="2" fill="#1a1a14"/></svg></div>
+      <div><h1>Preview Studio</h1><p>Drop assets · share the preview</p></div>
+    </div>
+
+    <div class="uploads">
+      <p class="eyebrow">Your assets</p>
+
+      <label class="drop" id="drop-yt">
+        <div class="drop-head"><span class="t">YouTube thumbnail</span><span class="dim">1920 × 1080</span></div>
+        <div class="drop-body"><div><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="#9a9a9f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="#9a9a9f" stroke-width="1.8" stroke-linecap="round"/></svg></div><small><b>Drag & drop</b> or click</small></div></div>
+        <div class="replace-hint">Click to replace</div>
+        <input type="file" accept="image/*" data-key="yt">
+      </label>
+
+      <label class="drop" id="drop-sp">
+        <div class="drop-head"><span class="t">Podcast tile</span><span class="dim">600 × 600</span></div>
+        <div class="drop-body"><div><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="#9a9a9f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="#9a9a9f" stroke-width="1.8" stroke-linecap="round"/></svg></div><small><b>Drag & drop</b> or click</small></div></div>
+        <div class="replace-hint">Click to replace</div>
+        <input type="file" accept="image/*" data-key="sp">
+      </label>
+
+      <label class="drop" id="drop-li">
+        <div class="drop-head"><span class="t">Social image</span><span class="dim">1080 × 1350</span></div>
+        <div class="drop-body"><div><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="#9a9a9f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="#9a9a9f" stroke-width="1.8" stroke-linecap="round"/></svg></div><small><b>Drag & drop</b> or click</small></div></div>
+        <div class="replace-hint">Click to replace</div>
+        <input type="file" accept="image/*" data-key="li">
+      </label>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="copylink" disabled>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1.5 1.5" stroke="#1a1a14" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1.5-1.5" stroke="#1a1a14" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Copy share link
+      </button>
+      <button class="btn btn-ghost" id="export" disabled>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="#9a9a9f" stroke-width="1.9" stroke-linecap="round"/><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="#9a9a9f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Download host-ready file
+      </button>
+      <button class="btn btn-ghost" id="reset">Clear all</button>
+      <div class="divider"></div>
+      <p class="note"><b>Copy share link</b> packs your images into the URL — paste it to anyone, no hosting needed. Very large images may exceed the link limit; if so, use the host-ready file (drop it on Netlify/Vercel for a permanent link).</p>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <div class="stage-inner">
+      <div class="stage-head">
+        <div>
+          <h2 id="head-title">Asset preview</h2>
+          <p id="head-sub">Here's how your three assets look in context. Upload on the left, then copy a share link.</p>
+        </div>
+        <span class="pill">3 placements</span>
+      </div>
+
+      <section class="block">
+        <div class="block-label"><span class="n">1</span><span class="ttl">YouTube</span><span class="meta">Thumbnail · <b>1920×1080</b></span></div>
+        <div class="mock yt">
+          <div class="yt-bar"><div class="yt-logo"><span class="play"></span><span>YouTube</span></div><div class="yt-search">Search</div></div>
+          <div class="yt-body">
+            <div>
+              <div class="yt-player"><img id="yt-img" alt="" style="display:none"><div class="ph" id="yt-ph">Your 1920×1080 thumbnail</div><div class="bigplay"></div></div>
+              <div class="yt-title">Your video title appears right here — clear and compelling</div>
+              <div class="yt-channel"><div class="yt-av"></div><div><div class="c-name">Your Channel</div><div class="c-sub">128K subscribers</div></div></div>
+            </div>
+            <div class="yt-side">
+              <div class="yt-rec"><div class="rthumb"></div><div class="rlines"><i></i><i></i><i></i></div></div>
+              <div class="yt-rec"><div class="rthumb"></div><div class="rlines"><i></i><i></i><i></i></div></div>
+              <div class="yt-rec"><div class="rthumb"></div><div class="rlines"><i></i><i></i><i></i></div></div>
+              <div class="yt-rec"><div class="rthumb"></div><div class="rlines"><i></i><i></i><i></i></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="block-label"><span class="n">2</span><span class="ttl">Podcast tile</span><span class="meta">Cover art · <b>600×600</b></span></div>
+        <div class="mock sp">
+          <div class="sp-head"><div class="slog"><svg viewBox="0 0 24 24" fill="#000"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.6 14.4a.62.62 0 01-.86.2c-2.34-1.43-5.3-1.75-8.77-.96a.62.62 0 11-.28-1.21c3.8-.87 7.07-.5 9.7 1.11.3.18.39.57.21.86zm1.23-2.73a.78.78 0 01-1.07.26c-2.68-1.65-6.77-2.13-9.94-1.16a.78.78 0 11-.45-1.49c3.62-1.1 8.12-.56 11.2 1.32.36.22.48.7.26 1.07zm.1-2.85C14.83 8.96 9.5 8.78 6.4 9.72a.94.94 0 11-.54-1.8c3.56-1.08 9.45-.87 13.18 1.34a.94.94 0 11-.96 1.61z"/></svg></div><span class="stitle">Popular technology podcasts</span></div>
+          <div class="sp-grid">
+            <div class="sp-card hero"><div class="sp-cover"><img id="sp-img" alt="" style="display:none"><div class="ph" id="sp-ph">Your 600×600 cover</div></div><div class="nm">Your Podcast</div><div class="by">Your name · weekly episodes</div></div>
+            <div class="sp-card sp-fake"><div class="sp-cover" style="background:#2a2a2a"></div><div class="nm"></div><div class="by"></div></div>
+            <div class="sp-card sp-fake"><div class="sp-cover" style="background:#262626"></div><div class="nm"></div><div class="by"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="block" style="margin-bottom:10px">
+        <div class="block-label"><span class="n">3</span><span class="ttl">Social image</span><span class="meta">Feed post · <b>1080×1350</b></span></div>
+        <div class="mock li">
+          <div class="li-card">
+            <div class="li-top"><div class="li-av"><svg viewBox="0 0 24 24" fill="none"><path d="M5 18L12 6l7 12H5z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg></div><div class="li-who"><div class="nm">Your Brand</div><div class="sub">811 followers</div><div class="time">1w</div></div></div>
+            <div class="li-cap">Your caption goes here — a line or two to set up the post.</div>
+            <div class="li-media"><img id="li-img" alt="" style="display:none"><div class="ph" id="li-ph"><svg viewBox="0 0 24 24" width="24" height="24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#a8a6a0" stroke-width="1.6"/><circle cx="8.5" cy="8.5" r="1.6" fill="#a8a6a0"/><path d="M21 16l-5-5L5 21" stroke="#a8a6a0" stroke-width="1.6"/></svg>Your 1080×1350 image</div></div>
+            <div class="li-actions">
+              <div><svg viewBox="0 0 24 24" fill="none"><path d="M7 10v10M2 12l1-2h4V6a2 2 0 012-2l3 7v9H4a2 2 0 01-2-2v-6z" stroke="#65636d" stroke-width="1.5" stroke-linejoin="round"/></svg>Like</div>
+              <div><svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.4 8.4 0 01-9 8.4L3 21l1.1-3.6A8.4 8.4 0 1121 11.5z" stroke="#65636d" stroke-width="1.5" stroke-linejoin="round"/></svg>Comment</div>
+              <div><svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-7-7 16-2-7-7-2z" stroke="#65636d" stroke-width="1.5" stroke-linejoin="round"/></svg>Share</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast">Saved</div>
+
+<script>
+  const state={yt:null,sp:null,li:null};
+  // target sizes + jpeg quality for compact share links
+  const SPECS={yt:{w:1280,h:720,q:.82},sp:{w:600,h:600,q:.85},li:{w:864,h:1080,q:.82}};
+  const targets={yt:['yt-img','yt-ph'],sp:['sp-img','sp-ph'],li:['li-img','li-ph']};
+
+  function paint(key){
+    const [img,ph]=targets[key];const data=state[key];
+    const i=document.getElementById(img);
+    if(data){i.src=data;i.style.display='block';document.getElementById(ph).style.display='none';}
+    else{i.removeAttribute('src');i.style.display='none';document.getElementById(ph).style.display='';}
+    const drop=document.getElementById('drop-'+key);
+    if(drop&&data){drop.classList.add('filled');drop.querySelector('.drop-body').innerHTML='<img class="thumb" src="'+data+'">';}
+  }
+
+  function refresh(){
+    const any=state.yt||state.sp||state.li;
+    document.getElementById('copylink').disabled=!any;
+    document.getElementById('export').disabled=!any;
+  }
+
+  // downscale + compress to keep URLs manageable
+  function processImage(key,file){
+    return new Promise(res=>{
+      const r=new FileReader();
+      r.onload=e=>{
+        const img=new Image();
+        img.onload=()=>{
+          const s=SPECS[key];
+          // cover-fit into target box
+          const scale=Math.max(s.w/img.width,s.h/img.height);
+          const dw=img.width*scale,dh=img.height*scale;
+          const c=document.createElement('canvas');c.width=s.w;c.height=s.h;
+          const ctx=c.getContext('2d');
+          ctx.drawImage(img,(s.w-dw)/2,(s.h-dh)/2,dw,dh);
+          res(c.toDataURL('image/jpeg',s.q));
+        };
+        img.src=e.target.result;
+      };
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function loadFile(key,file){
+    if(!file)return;
+    state[key]=await processImage(key,file);
+    paint(key);refresh();
+  }
+
+  document.querySelectorAll('.drop').forEach(drop=>{
+    const input=drop.querySelector('input');const key=input.dataset.key;
+    input.addEventListener('change',e=>loadFile(key,e.target.files[0]));
+    ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag');}));
+    ['dragleave','dragend','drop'].forEach(ev=>drop.addEventListener(ev,()=>drop.classList.remove('drag')));
+    drop.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))loadFile(key,f);});
+  });
+
+  function toast(msg,warn){const t=document.getElementById('toast');t.textContent=msg;t.classList.toggle('warn',!!warn);t.classList.add('show');setTimeout(()=>t.classList.remove('show'),warn?4200:2200);}
+
+  document.getElementById('reset').addEventListener('click',()=>{
+    ['yt','sp','li'].forEach(k=>{
+      state[k]=null;
+      const drop=document.getElementById('drop-'+k);drop.querySelector('input').value='';drop.classList.remove('filled');
+      drop.querySelector('.drop-body').innerHTML='<div><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="#9a9a9f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="#9a9a9f" stroke-width="1.8" stroke-linecap="round"/></svg></div><small><b>Drag & drop</b> or click</small></div>';
+      paint(k);
+    });
+    history.replaceState(null,'',location.pathname+location.search);
+    refresh();
+  });
+
+  // COPY SHARE LINK — encode state into URL hash
+  document.getElementById('copylink').addEventListener('click',async()=>{
+    const payload=JSON.stringify({yt:state.yt,sp:state.sp,li:state.li});
+    const encoded=encodeURIComponent(btoa(unescape(encodeURIComponent(payload))));
+    const url=location.origin+location.pathname+'?view=1#d='+encoded;
+    const LIMIT=60000; // safe-ish browser URL ceiling
+    if(url.length>LIMIT){
+      toast('Images too large for a link — use the host-ready file instead',true);
+      return;
+    }
+    try{await navigator.clipboard.writeText(url);toast('Share link copied ✓ ('+Math.round(url.length/1024)+'KB)');}
+    catch(_){
+      // clipboard may be blocked off https — fall back to prompt
+      window.prompt('Copy your share link:',url);
+    }
+  });
+
+  // DOWNLOAD HOST-READY FILE — preview-only, images baked in
+  document.getElementById('export').addEventListener('click',()=>{
+    const baked={yt:state.yt,sp:state.sp,li:state.li};
+    const docHtml='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+    const inject='<script>window.__BAKED__='+JSON.stringify(baked)+';window.__PREVIEW_ONLY__=true;<\/script>';
+    const out=docHtml.replace(/<script>window\.__BAKED__=[\s\S]*?<\/script>/,'').replace('<script>',inject+'\n<script>');
+    const blob=new Blob([out],{type:'text/html'});const u=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=u;a.download='preview-share.html';a.click();URL.revokeObjectURL(u);
+    toast('Host-ready file downloaded ✓');
+  });
+
+  // ---- hydrate on load: from URL hash, or baked export ----
+  (function init(){
+    let loaded=false,previewOnly=false;
+    // baked export file
+    if(window.__BAKED__){Object.assign(state,window.__BAKED__);loaded=true;previewOnly=!!window.__PREVIEW_ONLY__;}
+    // shared link
+    const h=location.hash;
+    if(h.startsWith('#d=')){
+      try{
+        const json=decodeURIComponent(escape(atob(decodeURIComponent(h.slice(3)))));
+        Object.assign(state,JSON.parse(json));loaded=true;
+      }catch(e){console.warn('bad share data',e);}
+      if(new URLSearchParams(location.search).get('view')==='1')previewOnly=true;
+    }
+    ['yt','sp','li'].forEach(paint);refresh();
+    if(previewOnly){
+      document.body.classList.add('preview-only');
+      document.getElementById('head-title').textContent='Preview';
+      document.getElementById('head-sub').textContent='Here are the three placements in context.';
+    }
+  })();
+</script>
+</body>
+</html>
